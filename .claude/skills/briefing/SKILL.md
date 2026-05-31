@@ -1,6 +1,6 @@
 ---
 name: briefing
-description: raw/ 폴더 최신 파일을 읽고 templates/briefing.md 형식으로 요약하여 summary/ 폴더에 저장한다.
+description: raw/ 폴더 최신 파일을 읽고 같은 스킬 폴더의 template.md 형식으로 요약하여 summary/ 폴더에 저장한다.
 ---
 
 ## 작업 순서
