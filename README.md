@@ -1,6 +1,6 @@
 # 일일 정보 브리핑 자동화 — Claude Code Routines 실습
 
-매일 정해진 시간에 **지정 주제의 정보를 자동 수집 → 요약 → 메일 발송**까지 처리하는 워크플로우를 Claude Code Routines로 구축하는 실습 자료입니다.
+매일 정해진 시간에 **지정 주제의 정보를 자동 수집 → 요약 → Slack 채널 게시**까지 처리하는 워크플로우를 Claude Code Routines로 구축하는 실습 자료입니다.
 
 코드 작성·터미널 명령은 **단 한 줄도 필요 없습니다**. GitHub 웹과 Claude Code 웹에서 클릭만으로 끝납니다.
 
@@ -15,14 +15,14 @@ daily-briefing routine 자동 시작 (Claude Code 클라우드, 단일 세션)
        ↓
    ┌── ① scrapper 스킬 호출
    │     · 지정 주제의 최근 24시간 정보 수집
-   │     · GitHub의 raw/2026-05-31.md 로 커밋·푸시
+   │     · GitHub의 raw/2026-06-06.md 로 커밋·푸시
    │
    ├── ② briefing 스킬 호출
    │     · raw 파일 읽고 template.md 형식으로 요약
-   │     · summary/2026-05-31.md 로 커밋·푸시
+   │     · summary/2026-06-06.md 로 커밋·푸시
    │
    └── ③ relay 스킬 호출
-         · summary 파일을 지정 이메일로 발송
+         · summary 파일을 지정 Slack 채널에 메시지로 게시
        ↓
 완료
 ```
@@ -38,9 +38,9 @@ daily-briefing routine 자동 시작 (Claude Code 클라우드, 단일 세션)
 |---|---|---|
 | GitHub 계정 | 무료 | 3분 |
 | Claude Max 구독 | (이미 있음) | — |
-| Gmail 계정 (발송용) | 무료 | (이미 있음) |
+| Slack 워크스페이스 + 게시 권한 | 무료 | 5분 |
 | 추적 주제 1개 | — | 결정만 |
-| 수신 Gmail 주소 | — | 결정만 |
+| 게시 대상 Slack 채널 (ID) | — | 결정만 |
 
 > **추가 API 요금 없음**: Routine 실행은 Max 구독 사용량에 차감되며, 별도 토큰 과금 없습니다. 일일 실행 횟수 캡이 있으나 본 워크플로우(하루 1회)는 한도 내입니다.
 
@@ -49,7 +49,7 @@ daily-briefing routine 자동 시작 (Claude Code 클라우드, 단일 세션)
 ## 3. 폴더 구조 (이 저장소)
 
 ```
-test-brief-agent/
+ServiceResearch/
 ├── README.md                       ← 이 파일
 ├── .claude/
 │   └── skills/
@@ -59,7 +59,7 @@ test-brief-agent/
 │       │   ├── SKILL.md           ← 요약 절차
 │       │   └── template.md       ← 브리핑 출력 형식 (분리)
 │       └── relay/
-│           └── SKILL.md           ← 메일 발송 절차
+│           └── SKILL.md           ← Slack 게시 절차
 ├── raw/
 │   └── .gitkeep                    ← Scrapper가 매일 파일 추가
 └── summary/
@@ -76,7 +76,7 @@ test-brief-agent/
 
 > 이 실습의 핵심 학습 목표
 
-**Q. 사실 잘 짠 프롬프트 하나면 수집·요약·발송이 모두 해결된다. 왜 굳이 3개의 스킬과 1개의 템플릿 파일로 쪼개 놓았나?**
+**Q. 사실 잘 짠 프롬프트 하나면 수집·요약·게시가 모두 해결된다. 왜 굳이 3개의 스킬과 1개의 템플릿 파일로 쪼개 놓았나?**
 
 **A. 에이전틱 워크플로우에서 "프롬프트 / 스킬 / 템플릿"이 각각 어떤 역할을 맡는지 몸으로 익히기 위해서다.** 실무 규모의 에이전트는 거의 항상 이 세 층을 분리해서 운영하기 때문에, 가장 단순한 예제에서부터 그 경계선을 그어 두는 것이 목적이다.
 
@@ -97,11 +97,11 @@ test-brief-agent/
 - 분리 구조: 같은 `briefing` 스킬을 주간/월간 Routine에서 그대로 호출, `template.md`만 교체
 
 **2) 버전 관리 (Auditability)**
-- 통합 프롬프트: "왜 지난주부터 메일 형식이 바뀌었지?" → Routine 설정 화면의 변경 이력으로 추적
+- 통합 프롬프트: "왜 지난주부터 메시지 형식이 바뀌었지?" → Routine 설정 화면의 변경 이력으로 추적
 - 분리 구조: `template.md`의 git history에 누가 언제 무엇을 왜 바꿨는지 그대로 남음 → PR 리뷰·롤백 가능
 
 **3) 관심사 분리 (Separation of Concerns)**
-- 통합 프롬프트: 콘텐츠 담당자가 메일 형식만 바꾸려 해도 수집·발송 로직까지 읽고 건드릴 위험
+- 통합 프롬프트: 콘텐츠 담당자가 메시지 형식만 바꾸려 해도 수집·게시 로직까지 읽고 건드릴 위험
 - 분리 구조: `template.md`만 열어 수정 → 다른 단계는 0% 영향
 
 **4) 디버깅 용이성 (Debuggability)**
@@ -110,7 +110,7 @@ test-brief-agent/
 
 ### 4.3 실제 시나리오로 비교해 보기
 
-**시나리오: "메일 본문에 '한줄평' 섹션을 하나 추가하고 싶다."**
+**시나리오: "Slack 메시지 본문에 '한줄평' 섹션을 하나 추가하고 싶다."**
 
 - **통합 프롬프트 방식**: Claude Code 웹 → Routine 편집 → 거대한 단일 프롬프트 안에서 출력 형식 부분 찾기 → 신중히 수정 → 다른 곳 깨질 위험 검증
 - **본 프로젝트 방식**: GitHub 웹에서 `template.md` 열기 → 한 줄 추가 → Commit. **끝.** scrapper와 relay는 손도 안 댐.
@@ -140,25 +140,30 @@ test-brief-agent/
 
 #### 1-1. 추적 주제 입력
 - 파일: `.claude/skills/scrapper/SKILL.md`
-- 수정 위치: `## 주제` 섹션 아래 `※ 여기에 추적할 주제를 한 줄로 적으세요 ※`
-- 예시:
+- 수정 위치: `## 주제` 섹션
+- 현재 값:
   ```
-  - 국내 호텔 M&A 및 투자 동향
+  - 신규 AI 서비스 발굴 (IT 분야 한정, 한국·일본·미국 시장 동향)
   ```
+- 다른 주제로 바꾸려면 위 줄만 수정.
 
-#### 1-2. 수신 이메일 입력
+#### 1-2. 게시 Slack 채널 입력
 - 파일: `.claude/skills/relay/SKILL.md`
-- 수정 위치: `## 설정` 섹션의 `수신 이메일: ※ 여기에 받는 사람 Gmail 주소를 적으세요 ※`
-- 예시:
+- 수정 위치: `## 설정` 섹션
+- 현재 값:
   ```
-  - 수신 이메일: yourname@gmail.com
+  - Slack 워크스페이스: dailybrief-hq
+  - Slack 채널 ID: C0B8NDT4H9B
   ```
+- 다른 채널로 바꾸려면 위 두 줄만 수정.
 
-> 텍스트 에디터로 직접 수정하거나, GitHub에 업로드한 뒤 GitHub 웹 UI에서 연필 아이콘 클릭해 편집해도 됩니다.
+> 텍스트 에디터로 직접 수정하거나, GitHub 웹 UI에서 연필 아이콘 클릭해 편집해도 됩니다.
 
 ---
 
 ### Step 2. GitHub 저장소 만들기
+
+(이미 본 저장소 `ServiceResearch`를 쓰고 있다면 건너뜀.)
 
 1. [github.com](https://github.com) 로그인
 2. 우측 상단 **`+`** 클릭 → **New repository**
@@ -171,12 +176,14 @@ test-brief-agent/
 
 ### Step 3. 파일 업로드 (git 명령 불필요)
 
+(이미 본 저장소에 파일이 다 있다면 건너뜀.)
+
 1. 방금 만든 빈 저장소 화면 중앙의 **"uploading an existing file"** 링크 클릭
-2. Mac Finder에서 본 폴더(`test-brief-agent`) 열기
+2. Mac Finder에서 본 폴더(`ServiceResearch`) 열기
    - **`.claude` 폴더가 안 보이면**: `Cmd + Shift + .` 눌러 숨김 파일/폴더 표시
 3. **폴더 안의 항목 전부**를 GitHub 업로드 창으로 드래그
    - `.claude/`, `raw/`, `summary/`, `README.md` 모두 포함
-   - **주의**: `test-brief-agent` 폴더 자체가 아니라 **그 안의 항목들**을 드래그
+   - **주의**: `ServiceResearch` 폴더 자체가 아니라 **그 안의 항목들**을 드래그
 4. 페이지 하단 Commit 메시지에 `Initial setup` 입력 후 **Commit changes** 클릭
 
 업로드 완료 후 저장소에서 위 [폴더 구조](#3-폴더-구조-이-저장소) 그대로 보이면 성공.
@@ -191,10 +198,10 @@ test-brief-agent/
 
 | 커넥터 | 용도 | 권한 |
 |---|---|---|
-| **GitHub** | 저장소 읽기·쓰기 | `daily-briefing` repo만 선택 허용 |
-| **Gmail** | 메일 발송 | 발송 주체가 될 본인 Gmail 계정 연결 |
+| **GitHub** | 저장소 읽기·쓰기 | `ServiceResearch` repo만 선택 허용 |
+| **Slack** | 채널 메시지 게시 | `dailybrief-hq` 워크스페이스 + 대상 채널 게시 권한 |
 
-> 💡 **참고**: Gmail 커넥터에 연결한 계정 = "보내는 사람". 받는 사람 주소는 Step 1-2에서 입력한 값.
+> 💡 **참고**: Slack 커넥터에 연결한 워크스페이스에 본인이 멤버여야 하고, `relay/SKILL.md`에 명시된 채널(현재 `C0B8NDT4H9B`)에 메시지 게시 권한이 있어야 합니다.
 
 ---
 
@@ -209,7 +216,7 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 | 항목 | 값 |
 |---|---|
 | Name | `daily-briefing` |
-| Repository | `daily-briefing` 선택 |
+| Repository | `hyunn-kim-ux/ServiceResearch` |
 | Trigger | **Schedule** → `매일 07:00`, Timezone: **Asia/Seoul** |
 
 #### Routine 프롬프트
@@ -228,12 +235,13 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
    summary/YYYY-MM-DD.md 파일이 생성·커밋·푸시될 때까지 완료를 확인하라.
 
 3. 2번 성공 후, relay 스킬을 호출하라.
-   Gmail 발송 성공 응답을 확인하라.
+   Slack 채널 C0B8NDT4H9B (워크스페이스: dailybrief-hq) 에 메시지가 게시되고
+   응답으로 ts(또는 permalink)가 반환된 것을 확인하라.
 
 4. 종료 시 다음 정보를 한 줄씩 출력하라:
    - 생성된 raw 파일 경로
    - 생성된 summary 파일 경로
-   - 메일 발송 대상 주소와 발송 시각
+   - Slack 게시 시각과 메시지 permalink
 ```
 
 ---
@@ -246,10 +254,10 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 2. 표시되는 세션 URL을 새 탭에서 열어 실시간 진행 관찰 — 한 세션 안에서 세 스킬이 순서대로 호출되는 것이 보입니다.
 3. 약 3~7분 후 다음을 확인:
    - [ ] 세션 로그에 ① scrapper → ② briefing → ③ relay 호출이 순서대로 표시됨
-   - [ ] GitHub `daily-briefing` repo에 `raw/YYYY-MM-DD.md` 생성됨
-   - [ ] GitHub `daily-briefing` repo에 `summary/YYYY-MM-DD.md` 생성됨
-   - [ ] 지정 Gmail 수신함에 `[일일 브리핑] YYYY-MM-DD` 메일 도착
-   - [ ] 세션 마지막 출력에 raw 경로 / summary 경로 / 메일 발송 시각이 한 줄씩 보고됨
+   - [ ] GitHub `ServiceResearch` repo에 `raw/YYYY-MM-DD.md` 생성됨
+   - [ ] GitHub `ServiceResearch` repo에 `summary/YYYY-MM-DD.md` 생성됨
+   - [ ] Slack 채널 `C0B8NDT4H9B` 에 `*[일일 브리핑] YYYY-MM-DD*` 메시지 게시됨
+   - [ ] 세션 마지막 출력에 raw 경로 / summary 경로 / Slack permalink가 한 줄씩 보고됨
 
 모두 통과하면 설정 완료. 다음 날 오전 7시부터 자동으로 매일 실행됩니다.
 
@@ -259,9 +267,9 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 
 | 무엇 | 어디서 |
 |---|---|
-| 일일 수집 원본 | `daily-briefing` repo의 `raw/YYYY-MM-DD.md` |
-| 일일 요약 (브리핑) | `daily-briefing` repo의 `summary/YYYY-MM-DD.md` |
-| 일일 브리핑 메일 | 지정 Gmail 수신함, 제목 `[일일 브리핑] YYYY-MM-DD` |
+| 일일 수집 원본 | `ServiceResearch` repo의 `raw/YYYY-MM-DD.md` |
+| 일일 요약 (브리핑) | `ServiceResearch` repo의 `summary/YYYY-MM-DD.md` |
+| 일일 브리핑 메시지 | Slack `dailybrief-hq` 워크스페이스, 채널 `C0B8NDT4H9B`, 헤더 `*[일일 브리핑] YYYY-MM-DD*` |
 | 실행 이력·로그 | Claude Code 웹 → Routines → 각 routine → Runs 탭 |
 
 ---
@@ -276,8 +284,9 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 - GitHub 웹에서 `.claude/skills/briefing/template.md` 열기 → 형식 수정 → Commit
 - 다음 실행부터 새 형식 반영
 
-### 수신 이메일 바꾸기
-- GitHub 웹에서 `.claude/skills/relay/SKILL.md` 열기 → 이메일 수정 → Commit
+### 게시 Slack 채널 바꾸기
+- GitHub 웹에서 `.claude/skills/relay/SKILL.md` 열기 → 채널 ID(`C0B8NDT4H9B`) 또는 워크스페이스 줄 수정 → Commit
+- 새 채널에서도 Slack 커넥터에 게시 권한이 있어야 함
 
 ### 실행 시간 바꾸기
 - Claude Code 웹 → Routines → `daily-briefing` → Edit → Schedule 변경
@@ -294,7 +303,8 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 | 특정 스킬 단계에서 멈춤 | 직전 스킬의 산출물(파일·커밋)이 만들어지지 않음 | 세션 로그에서 마지막 성공한 스킬 확인 → 해당 SKILL.md 점검 |
 | scrapper 단계에서 raw 파일이 비어 있음 | 해당 주제의 24h 내 자료 없음 | 정상 동작. 주제를 더 넓히거나 검색어 보강 |
 | briefing 단계에서 형식 어긋남 | `template.md` 형식 변경 후 SKILL.md와 불일치 | `briefing/template.md`와 `briefing/SKILL.md`의 섹션 명칭 일치 확인 |
-| relay 단계에서 메일 발송 실패 | Gmail 커넥터 미연결 또는 권한 부족 | Settings → Connectors → Gmail 재연결 |
+| relay 단계에서 Slack 게시 실패 | Slack 커넥터 미연결 또는 대상 채널 게시 권한 부족 | Settings → Connectors → Slack 재연결, 대상 채널 권한 확인 |
+| relay 단계에서 메시지가 잘림 | summary가 Slack 단일 메시지 한도(~40k자) 초과 | `relay/SKILL.md`의 분할 전송 규칙대로 여러 메시지로 분할되었는지 로그 확인 |
 | GitHub 커밋·푸시 실패 | GitHub 커넥터 권한 누락 | Settings → Connectors → GitHub 권한 재승인 (대상 repo 포함) |
 | 매일 실행 안 됨 | Schedule timezone 오설정 | `daily-briefing` routine의 Timezone을 `Asia/Seoul`로 다시 설정 |
 | "daily cap" 에러 | 하루 routine 실행 횟수 한도 초과 | 다음 날 자동 리셋 |
@@ -317,7 +327,7 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 - 단계 분리 학습 가치는 **스킬 단위 SKILL.md 파일 분리**로 그대로 유지됨
 
 ### Skill 파일이 저장되는 위치
-- 본 저장소(`daily-briefing`)의 `.claude/skills/` 폴더
+- 본 저장소(`ServiceResearch`)의 `.claude/skills/` 폴더
 - Routine 실행 시 Anthropic 클라우드 인프라가 본 저장소를 임시 작업 디렉토리로 clone → `.claude/skills/` 자동 인식
 - 별도 업로드·배포 절차 없음. **GitHub에 커밋·푸시하면 즉시 다음 실행에 반영.**
 
@@ -333,8 +343,8 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 
 설정 완료 후 1주일간 매일 아침 확인:
 
-- [ ] 오전 7시~7시 10분 사이 Gmail에 `[일일 브리핑]` 메일 수신
-- [ ] 메일 본문 형식이 `briefing/template.md`와 일치
+- [ ] 오전 7시~7시 10분 사이 Slack 채널 `C0B8NDT4H9B`에 `*[일일 브리핑]*` 메시지 게시
+- [ ] 메시지 본문 형식이 `briefing/template.md`와 일치
 - [ ] GitHub repo에 그날 날짜의 `raw/` 와 `summary/` 파일 둘 다 존재
 - [ ] Routines 페이지에서 `daily-briefing` routine 마지막 실행 상태 "Success"
 
