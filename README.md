@@ -304,7 +304,7 @@ Claude Code 웹 좌측 메뉴 **Routines** → **Create routine** 클릭. 우리
 | scrapper 단계에서 raw 파일이 비어 있음 | 해당 주제의 24h 내 자료 없음 | 정상 동작. 주제를 더 넓히거나 검색어 보강 |
 | briefing 단계에서 형식 어긋남 | `template.md` 형식 변경 후 SKILL.md와 불일치 | `briefing/template.md`와 `briefing/SKILL.md`의 섹션 명칭 일치 확인 |
 | relay 단계에서 Slack 게시 실패 | Slack 커넥터 미연결 또는 대상 채널 게시 권한 부족 | Settings → Connectors → Slack 재연결, 대상 채널 권한 확인 |
-| relay 단계에서 메시지가 잘림 | summary가 Slack 단일 메시지 한도(~40k자) 초과 | `relay/SKILL.md`의 분할 전송 규칙대로 여러 메시지로 분할되었는지 로그 확인 |
+| relay 단계에서 메시지가 잘리거나 일부 형식이 풀려서 보임 | Slack 단일 메시지 한도(~40k자) 초과 또는 mrkdwn 미렌더링 | summary 길이를 줄이거나 `briefing/template.md`에서 항목 수를 조정. Slack의 마크다운 렌더링 차이는 정상 동작(`relay/SKILL.md`의 "Slack 마크다운 특성" 참고) |
 | GitHub 커밋·푸시 실패 | GitHub 커넥터 권한 누락 | Settings → Connectors → GitHub 권한 재승인 (대상 repo 포함) |
 | 매일 실행 안 됨 | Schedule timezone 오설정 | `daily-briefing` routine의 Timezone을 `Asia/Seoul`로 다시 설정 |
 | "daily cap" 에러 | 하루 routine 실행 횟수 한도 초과 | 다음 날 자동 리셋 |
